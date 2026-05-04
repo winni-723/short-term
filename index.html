@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#10261f" />
+    <title>Short-Term Investment Tracker</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="Investment overview">
+        <div>
+          <p class="eyebrow">Short-term Portfolio</p>
+          <h1>Investment Tracker</h1>
+        </div>
+        <div class="cash-card">
+          <span>Total Cash</span>
+          <strong id="totalCash">$0.00</strong>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Performance summary">
+        <article>
+          <span>Total Realized P/L</span>
+          <strong id="totalProfit">$0.00</strong>
+        </article>
+        <article>
+          <span>Average ROI</span>
+          <strong id="averageRoi">0.00%</strong>
+        </article>
+        <article>
+          <span>Completed Trades</span>
+          <strong id="tradeCount">0</strong>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Add Trade</h2>
+          <button id="resetButton" class="icon-button" type="button" title="Reset form" aria-label="Reset form">R</button>
+        </div>
+
+        <form id="tradeForm" class="trade-form">
+          <label>
+            Buy-in Date
+            <input id="buyDate" name="buyDate" type="date" required />
+          </label>
+          <label>
+            Sell-out Date
+            <input id="sellDate" name="sellDate" type="date" required />
+          </label>
+          <label class="wide">
+            Stock Name
+            <input id="stockName" name="stockName" type="text" placeholder="Example: AAPL" autocomplete="off" required />
+          </label>
+          <label>
+            Buy-in Price
+            <input id="buyPrice" name="buyPrice" type="number" min="0" step="0.0001" inputmode="decimal" required />
+          </label>
+          <label>
+            Sell-out Price
+            <input id="sellPrice" name="sellPrice" type="number" min="0" step="0.0001" inputmode="decimal" required />
+          </label>
+          <label>
+            Shares
+            <input id="shares" name="shares" type="number" min="0" step="0.000001" inputmode="decimal" required />
+          </label>
+          <label id="cashInvestedField">
+            Cash Invested if Shares = 0
+            <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.01" inputmode="decimal" />
+          </label>
+          <label>
+            Current Total Cash
+            <input id="cashBalance" name="cashBalance" type="number" min="0" step="0.01" inputmode="decimal" required />
+          </label>
+          <div class="preview wide" aria-live="polite">
+            <span>Calculated Shares</span>
+            <strong id="sharePreview">0</strong>
+          </div>
+          <button class="primary-button wide" type="submit">Save Trade and Calculate</button>
+        </form>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="panel-heading">
+          <h2>Trends</h2>
+          <div class="segmented" role="group" aria-label="Chart mode">
+            <button class="active" type="button" data-chart="roi">ROI</button>
+            <button type="button" data-chart="cash">Cash</button>
+          </div>
+        </div>
+        <canvas id="trendChart" width="680" height="360" aria-label="ROI and cash trend line chart"></canvas>
+      </section>
+
+      <section class="panel history-panel">
+        <div class="panel-heading">
+          <h2>Trade History</h2>
+          <button id="clearAllButton" class="danger-button" type="button">Clear All</button>
+        </div>
+        <div id="emptyState" class="empty-state">No trades yet</div>
+        <div id="tradeList" class="trade-list"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
