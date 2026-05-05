@@ -88,7 +88,7 @@
           </label>
           <label id="cashInvestedField">
             Cash Invested if Shares = 0
-            <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.0001" inputmode="decimal" />
+            <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.01" inputmode="decimal" data-decimals="2" />
           </label>
           <div class="preview wide" aria-live="polite">
             <span>Calculated Shares</span>
@@ -168,6 +168,7 @@
           <span>Sat</span>
         </div>
         <div id="calendarGrid" class="calendar-grid" aria-label="Buy-in and sell-out calendar"></div>
+        <div id="calendarDetails" class="calendar-details" hidden></div>
       </section>
 
       <section class="panel history-panel page-section" data-page="transactions" hidden>
@@ -208,7 +209,18 @@
           <button id="nextHistoryPage" class="secondary-button" type="button">Next</button>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
+
+    <div id="confirmOverlay" class="confirm-overlay" hidden>
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle">Confirm Delete</h2>
+        <p id="confirmMessage">Are you sure?</p>
+        <div class="confirm-actions">
+          <button id="cancelConfirmButton" class="secondary-button" type="button">Cancel</button>
+          <button id="confirmDeleteButton" class="danger-button" type="button">Delete</button>
+        </div>
+      </div>
     </div>
 
     <script src="app.js"></script>

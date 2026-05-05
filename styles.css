@@ -277,6 +277,18 @@ input {
   outline: none;
 }
 
+input[type="date"] {
+  min-height: 44px;
+  line-height: 1.2;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 22px;
+  text-align: left;
+}
+
 select {
   width: 100%;
   min-height: 44px;
@@ -655,6 +667,92 @@ select:focus {
   color: var(--muted);
 }
 
+.trade-tools {
+  position: relative;
+  justify-self: end;
+  width: max-content;
+}
+
+.tool-menu-button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.tool-menu-button:active,
+.tool-menu-button:hover {
+  background: #eef2ed;
+}
+
+.tool-menu {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  right: calc(100% + 6px);
+  min-width: 92px;
+  transform: translateY(-50%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.processing-tools .tool-menu {
+  right: auto;
+  left: calc(100% + 6px);
+}
+
+.tool-menu .danger-button {
+  width: 100%;
+  min-height: 34px;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(20, 32, 28, 0.36);
+}
+
+.confirm-dialog {
+  width: min(100%, 360px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.confirm-dialog h2 {
+  font-size: 1rem;
+}
+
+.confirm-dialog p {
+  margin: 10px 0 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .calendar-panel .panel-heading {
   display: grid;
   grid-template-columns: 42px 1fr 42px;
@@ -698,6 +796,15 @@ select:focus {
   box-shadow: inset 0 0 0 2px rgba(22, 108, 85, 0.12);
 }
 
+.calendar-day.has-events {
+  cursor: pointer;
+}
+
+.calendar-day.has-events:hover {
+  border-color: var(--accent);
+  background: #f3f7f2;
+}
+
 .day-number {
   display: block;
   margin-bottom: 6px;
@@ -730,6 +837,42 @@ select:focus {
 .calendar-event.sell {
   background: var(--gold);
   color: #31220a;
+}
+
+.calendar-details {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfa;
+}
+
+.calendar-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.calendar-details-heading h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.calendar-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-detail-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 @media (max-width: 640px) {
@@ -849,6 +992,10 @@ select:focus {
     min-height: 42px;
   }
 
+  input[type="date"] {
+    min-height: 42px;
+  }
+
   .chart-panel .panel-heading,
   .chart-controls {
     align-items: stretch;
@@ -892,5 +1039,9 @@ select:focus {
   .calendar-event {
     padding: 2px 4px;
     font-size: 0.58rem;
+  }
+
+  .calendar-detail-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -39,7 +39,13 @@ const resetHistoryFilter = document.querySelector("#resetHistoryFilter");
 const prevHistoryPage = document.querySelector("#prevHistoryPage");
 const nextHistoryPage = document.querySelector("#nextHistoryPage");
 const historyPageInfo = document.querySelector("#historyPageInfo");
+const confirmOverlay = document.querySelector("#confirmOverlay");
+const confirmTitle = document.querySelector("#confirmTitle");
+const confirmMessage = document.querySelector("#confirmMessage");
+const cancelConfirmButton = document.querySelector("#cancelConfirmButton");
+const confirmDeleteButton = document.querySelector("#confirmDeleteButton");
 const calendarGrid = document.querySelector("#calendarGrid");
+const calendarDetails = document.querySelector("#calendarDetails");
 const calendarTitle = document.querySelector("#calendarTitle");
 const prevMonthButton = document.querySelector("#prevMonthButton");
 const nextMonthButton = document.querySelector("#nextMonthButton");
@@ -57,6 +63,7 @@ let historyFilterMode = "date";
 let historyPage = 1;
 const HISTORY_PAGE_SIZE = 10;
 let editingProcessingId = "";
+let pendingConfirmAction = null;
 let calendarDate = new Date();
 calendarDate.setDate(1);
 const DECIMAL_PLACES = 4;
@@ -138,6 +145,10 @@ function summaryMoney(value) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+function cashInvestedMoney(value) {
+  return summaryMoney(value);
+}
+
 function percent(value) {
   return `${(Number.isFinite(value) ? value : 0).toFixed(DECIMAL_PLACES)}%`;
 }
@@ -180,13 +191,18 @@ function decimalInputValue(value) {
   return Number.isFinite(value) ? value.toFixed(DECIMAL_PLACES) : "";
 }
 
+function twoDecimalInputValue(value) {
+  return Number.isFinite(value) ? value.toFixed(2) : "";
+}
+
 function limitDecimalInput(input) {
+  const maxDecimals = Number(input.dataset.decimals || DECIMAL_PLACES);
   const value = input.value;
   const dotIndex = value.indexOf(".");
   if (dotIndex === -1) return;
   const decimals = value.slice(dotIndex + 1);
-  if (decimals.length <= DECIMAL_PLACES) return;
-  input.value = `${value.slice(0, dotIndex)}.${decimals.slice(0, DECIMAL_PLACES)}`;
+  if (decimals.length <= maxDecimals) return;
+  input.value = `${value.slice(0, dotIndex)}.${decimals.slice(0, maxDecimals)}`;
 }
 
 function dateKey(date) {
@@ -388,7 +404,7 @@ function renderProcessingTransactions() {
         </div>
         <div class="trade-meta">
           Buy ${trade.buyDate}<br>
-          Buy ${money(trade.buyPrice)} / ${number(trade.shares)} shares / Invested ${money(trade.invested)}
+          Buy ${money(trade.buyPrice)} / ${number(trade.shares)} shares / Cash Invested ${cashInvestedMoney(trade.invested)}
         </div>
         ${
           isEditing
@@ -412,7 +428,7 @@ function renderProcessingTransactions() {
                 </label>
                 <label>
                   Cash Invested if Shares = 0
-                  <input name="cashInvested" type="number" min="0" step="0.0001" inputmode="decimal" value="${trade.cashInvested ? decimalInputValue(trade.cashInvested) : ""}" />
+                  <input name="cashInvested" type="number" min="0" step="0.01" inputmode="decimal" data-decimals="2" value="${trade.cashInvested ? twoDecimalInputValue(trade.cashInvested) : ""}" />
                 </label>
                 <div class="edit-actions">
                   <button class="primary-button" type="submit">Save Edit</button>
@@ -424,10 +440,21 @@ function renderProcessingTransactions() {
         }
       </div>
       <div class="trade-result">
-        ${money(trade.invested)}
-        <button class="secondary-button edit-trade" type="button" data-edit-id="${trade.id}">${isEditing ? "Editing" : "Edit"}</button>
-        <button class="select-trade" type="button" data-select-id="${trade.id}">Select</button>
-        <button class="delete-trade" type="button" title="Delete record" aria-label="Delete record" data-delete-id="${trade.id}">x</button>
+        ${cashInvestedMoney(trade.invested)}
+        ${
+          isEditing
+            ? ""
+            : `
+              <button class="secondary-button edit-trade" type="button" data-edit-id="${trade.id}">Edit</button>
+              <button class="select-trade" type="button" data-select-id="${trade.id}">Select</button>
+              <div class="trade-tools processing-tools">
+                <button class="tool-menu-button" type="button" aria-label="Open record tools" data-tool-id="${trade.id}">...</button>
+                <div class="tool-menu" data-tool-menu="${trade.id}" hidden>
+                  <button class="danger-button" type="button" data-request-delete-id="${trade.id}">Delete</button>
+                </div>
+              </div>
+            `
+        }
       </div>
     `;
     processingList.append(row);
@@ -465,7 +492,12 @@ function renderCompletedTrades() {
       <div class="trade-result result-stack">
         <span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${percent(trade.roi)}</span>
         <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${money(Math.abs(trade.profit))}</span>
-        <button class="delete-trade" type="button" title="Delete record" aria-label="Delete record" data-delete-id="${trade.id}">x</button>
+        <div class="trade-tools">
+          <button class="tool-menu-button" type="button" aria-label="Open record tools" data-tool-id="${trade.id}">...</button>
+          <div class="tool-menu" data-tool-menu="${trade.id}" hidden>
+            <button class="danger-button" type="button" data-request-delete-id="${trade.id}">Delete</button>
+          </div>
+        </div>
       </div>
     `;
     completedList.append(row);
@@ -793,11 +825,11 @@ function eventsByDate() {
   return trades.reduce((events, trade) => {
     if (trade.buyDate) {
       events[trade.buyDate] ||= [];
-      events[trade.buyDate].push({ type: "buy", label: trade.stockName });
+      events[trade.buyDate].push({ type: "buy", label: trade.stockName, trade });
     }
     if (trade.sellDate) {
       events[trade.sellDate] ||= [];
-      events[trade.sellDate].push({ type: "sell", label: trade.stockName });
+      events[trade.sellDate].push({ type: "sell", label: trade.stockName, trade });
     }
     return events;
   }, {});
@@ -828,6 +860,10 @@ function renderCalendar() {
     const dayEvents = events[key] || [];
     const cell = document.createElement("div");
     cell.className = "calendar-day";
+    if (dayEvents.length) {
+      cell.classList.add("has-events");
+      cell.dataset.date = key;
+    }
     if (key === dateKey(new Date())) cell.classList.add("today");
     cell.innerHTML = `
       <span class="day-number">${day}</span>
@@ -839,6 +875,60 @@ function renderCalendar() {
     `;
     calendarGrid.append(cell);
   }
+}
+
+function renderCalendarDetails(date) {
+  const events = eventsByDate()[date] || [];
+  calendarDetails.hidden = false;
+  calendarDetails.innerHTML = `
+    <div class="calendar-details-heading">
+      <h3>${date}</h3>
+      <button class="delete-trade" type="button" data-close-calendar-details aria-label="Close calendar details">x</button>
+    </div>
+    ${
+      events.length
+        ? `<div class="calendar-detail-list">
+            ${events
+              .map(({ type, trade }) => {
+                const isClosed = trade.status === "closed";
+                const buyOnly = type === "buy";
+                return `
+                  <article class="calendar-detail-row">
+                    <div>
+                      <div class="trade-name">
+                        <span>${escapeHtml(trade.stockName)}</span>
+                        <span class="badge ${type === "buy" ? "open-badge" : ""}">${type === "buy" ? "Buy-in" : "Sell-out"}</span>
+                      </div>
+                      <div class="trade-meta">
+                        ${
+                          buyOnly
+                            ? `Buy-in Date ${trade.buyDate}<br>
+                               Buy-in Price ${money(trade.buyPrice)} / ${number(trade.shares)} shares<br>
+                               Cash Invested ${cashInvestedMoney(trade.invested)}`
+                            : `Buy ${trade.buyDate} / Sell ${trade.sellDate}<br>
+                               Buy ${money(trade.buyPrice)} / Sell ${money(trade.sellPrice)} / ${number(trade.shares)} shares<br>
+                               Cash Invested ${cashInvestedMoney(trade.invested)} / Proceeds ${summaryMoney(trade.proceeds)}`
+                        }
+                      </div>
+                    </div>
+                    <div class="trade-result result-stack">
+                      ${
+                        !buyOnly && isClosed
+                          ? `<span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${percent(trade.roi)}</span>
+                             <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${money(Math.abs(trade.profit))}</span>`
+                          : buyOnly
+                            ? `<span>${cashInvestedMoney(trade.invested)}</span>`
+                            : `<span class="badge open-badge">Processing</span>`
+                      }
+                    </div>
+                  </article>
+                `;
+              })
+              .join("")}
+          </div>`
+        : `<div class="empty-state">No transactions on this date</div>`
+    }
+  `;
 }
 
 function render() {
@@ -866,6 +956,30 @@ function setToolboxOpen(isOpen) {
   sidebar.classList.toggle("open", isOpen);
   sidebarBackdrop.hidden = !isOpen;
   menuButton.setAttribute("aria-expanded", String(isOpen));
+}
+
+function openConfirmDialog({ title, message, confirmLabel = "Delete", onConfirm }) {
+  pendingConfirmAction = onConfirm;
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+  confirmDeleteButton.textContent = confirmLabel;
+  confirmOverlay.hidden = false;
+}
+
+function closeConfirmDialog() {
+  pendingConfirmAction = null;
+  confirmOverlay.hidden = true;
+}
+
+function deleteTradeById(id) {
+  const deletedTrade = trades.find((trade) => trade.id === id);
+  if (deletedTrade) {
+    totalCash += deletedTrade.status === "open" ? deletedTrade.invested : -deletedTrade.profit;
+  }
+  trades = trades.filter((trade) => trade.id !== id);
+  saveTrades();
+  saveCash();
+  render();
 }
 
 function renderChartView() {
@@ -920,13 +1034,46 @@ resetButton.addEventListener("click", () => {
 });
 
 clearAllButton.addEventListener("click", () => {
-  if (!trades.length || !confirm("Are you sure you want to clear all records?")) return;
-  trades = [];
-  saveTrades();
-  render();
+  if (!completedTrades().length) return;
+  openConfirmDialog({
+    title: "Clear Completed History",
+    message: "Delete all completed trade records? Processing transactions will stay untouched.",
+    confirmLabel: "Clear All",
+    onConfirm: () => {
+      trades = trades.filter((trade) => trade.status !== "closed");
+      saveTrades();
+      render();
+    },
+  });
 });
 
 document.addEventListener("click", (event) => {
+  const toolButton = event.target.closest("[data-tool-id]");
+  if (toolButton) {
+    const menu = document.querySelector(`[data-tool-menu="${toolButton.dataset.toolId}"]`);
+    document.querySelectorAll("[data-tool-menu]").forEach((item) => {
+      if (item !== menu) item.hidden = true;
+    });
+    if (menu) menu.hidden = !menu.hidden;
+    return;
+  }
+
+  const requestedDelete = event.target.closest("[data-request-delete-id]");
+  if (requestedDelete) {
+    const trade = trades.find((item) => item.id === requestedDelete.dataset.requestDeleteId);
+    if (!trade) return;
+    const isClosed = trade.status === "closed";
+    openConfirmDialog({
+      title: isClosed ? "Delete Completed Trade" : "Delete Processing Trade",
+      message: isClosed
+        ? `Delete ${trade.stockName} completed trade from ${trade.buyDate} to ${trade.sellDate}?`
+        : `Delete ${trade.stockName} processing trade from ${trade.buyDate}?`,
+      confirmLabel: "Delete",
+      onConfirm: () => deleteTradeById(trade.id),
+    });
+    return;
+  }
+
   const editButton = event.target.closest("[data-edit-id]");
   if (editButton) {
     editingProcessingId = editButton.dataset.editId;
@@ -951,14 +1098,7 @@ document.addEventListener("click", (event) => {
 
   const button = event.target.closest("[data-delete-id]");
   if (!button) return;
-  const deletedTrade = trades.find((trade) => trade.id === button.dataset.deleteId);
-  if (deletedTrade) {
-    totalCash += deletedTrade.status === "open" ? deletedTrade.invested : -deletedTrade.profit;
-  }
-  trades = trades.filter((trade) => trade.id !== button.dataset.deleteId);
-  saveTrades();
-  saveCash();
-  render();
+  deleteTradeById(button.dataset.deleteId);
 });
 
 closeTradeForm.addEventListener("submit", (event) => {
@@ -1067,6 +1207,18 @@ nextHistoryPage.addEventListener("click", () => {
   renderCompletedTrades();
 });
 
+calendarGrid.addEventListener("click", (event) => {
+  const day = event.target.closest("[data-date]");
+  if (!day) return;
+  renderCalendarDetails(day.dataset.date);
+});
+
+calendarDetails.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-close-calendar-details]")) return;
+  calendarDetails.hidden = true;
+  calendarDetails.innerHTML = "";
+});
+
 menuButton.addEventListener("click", () => {
   setToolboxOpen(!sidebar.classList.contains("open"));
 });
@@ -1140,6 +1292,11 @@ stockFilters.addEventListener("click", (event) => {
 
 document.addEventListener("click", (event) => {
   if (event.target.closest(".stock-dropdown")) return;
+  if (!event.target.closest(".trade-tools")) {
+    document.querySelectorAll("[data-tool-menu]").forEach((item) => {
+      item.hidden = true;
+    });
+  }
   const menu = document.querySelector("#stockDropdownMenu");
   const button = document.querySelector("#stockDropdownButton");
   if (!menu || !button) return;
@@ -1148,16 +1305,35 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") setToolboxOpen(false);
+  if (event.key === "Escape") {
+    setToolboxOpen(false);
+    closeConfirmDialog();
+  }
+});
+
+cancelConfirmButton.addEventListener("click", closeConfirmDialog);
+
+confirmOverlay.addEventListener("click", (event) => {
+  if (event.target === confirmOverlay) closeConfirmDialog();
+});
+
+confirmDeleteButton.addEventListener("click", () => {
+  const action = pendingConfirmAction;
+  closeConfirmDialog();
+  if (action) action();
 });
 
 prevMonthButton.addEventListener("click", () => {
   calendarDate.setMonth(calendarDate.getMonth() - 1);
+  calendarDetails.hidden = true;
+  calendarDetails.innerHTML = "";
   renderCalendar();
 });
 
 nextMonthButton.addEventListener("click", () => {
   calendarDate.setMonth(calendarDate.getMonth() + 1);
+  calendarDetails.hidden = true;
+  calendarDetails.innerHTML = "";
   renderCalendar();
 });
 
