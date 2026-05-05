@@ -21,6 +21,8 @@ const canvas = document.querySelector("#trendChart");
 const ctx = canvas.getContext("2d");
 const comparisonCanvas = document.querySelector("#comparisonChart");
 const comparisonCtx = comparisonCanvas.getContext("2d");
+const trendTooltip = document.querySelector("#trendTooltip");
+const comparisonTooltip = document.querySelector("#comparisonTooltip");
 const stockFilters = document.querySelector("#stockFilters");
 const trendsChartView = document.querySelector("#trendsChartView");
 const comparisonChartView = document.querySelector("#comparisonChartView");
@@ -64,6 +66,10 @@ let historyPage = 1;
 const HISTORY_PAGE_SIZE = 10;
 let editingProcessingId = "";
 let pendingConfirmAction = null;
+let trendHitPoints = [];
+let comparisonHitPoints = [];
+let activeTrendPoint = null;
+let activeComparisonPoint = null;
 let calendarDate = new Date();
 calendarDate.setDate(1);
 const DECIMAL_PLACES = 4;
@@ -107,7 +113,7 @@ function saveCash() {
 
 function loadCashEvents() {
   try {
-    return JSON.parse(localStorage.getItem(CASH_EVENTS_KEY)) || [];
+    return (JSON.parse(localStorage.getItem(CASH_EVENTS_KEY)) || []).filter((event) => event.label !== "Set");
   } catch {
     return [];
   }
@@ -567,6 +573,49 @@ function chartData() {
   }));
 }
 
+function chartValueLabel(mode, value) {
+  return mode === "roi" ? summaryPercent(value) : summaryMoney(value);
+}
+
+function showChartTooltip(tooltip, canvasElement, point, html) {
+  const placeLeft = point.x > canvasElement.clientWidth - 180;
+  const x = placeLeft ? point.x - 12 : point.x + 12;
+  const y = Math.min(Math.max(point.y, 42), canvasElement.clientHeight - 16);
+  tooltip.innerHTML = html;
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+  tooltip.classList.toggle("left", placeLeft);
+  tooltip.hidden = false;
+}
+
+function hideChartTooltip(tooltip) {
+  tooltip.hidden = true;
+}
+
+function nearestHitPoint(hitPoints, event, canvasElement) {
+  const rect = canvasElement.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  return hitPoints.find((point) => Math.hypot(point.x - x, point.y - y) <= 16);
+}
+
+function drawActivePoint(context, point, color) {
+  if (!point) return;
+  context.save();
+  context.strokeStyle = color;
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(point.x, point.y, 10, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = color;
+  context.beginPath();
+  context.arc(point.x, point.y, 4, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
 function comparisonSeries() {
   const names = stockNames();
   const activeNames = names.filter((name) => selectedStocks.has(name));
@@ -584,6 +633,9 @@ function comparisonSeries() {
 }
 
 function renderChart() {
+  trendHitPoints = [];
+  const selectedKey = activeTrendPoint ? activeTrendPoint.key : "";
+  if (!selectedKey) hideChartTooltip(trendTooltip);
   const ratio = window.devicePixelRatio || 1;
   const width = canvas.clientWidth || 680;
   const height = canvas.clientHeight || 360;
@@ -641,6 +693,15 @@ function renderChart() {
 
   data.forEach((item, index) => {
     const point = pointFor(item, index);
+    const hitPoint = {
+      ...point,
+      key: `${activeChart}-${index}-${item.label}`,
+      label: item.label,
+      value: item.value,
+      mode: activeChart,
+    };
+    trendHitPoints.push(hitPoint);
+    if (hitPoint.key === selectedKey) activeTrendPoint = hitPoint;
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = activeChart === "roi" ? "#166c55" : "#d99d28";
     ctx.lineWidth = 3;
@@ -655,7 +716,7 @@ function renderChart() {
   ctx.textAlign = "right";
   [minValue, minValue + spread / 2, maxValue].forEach((tick) => {
     const y = padding.top + plotHeight - ((tick - minValue) / spread) * plotHeight;
-    ctx.fillText(activeChart === "roi" ? percent(tick) : money(tick), padding.left - 8, y + 4);
+    ctx.fillText(activeChart === "roi" ? summaryPercent(tick) : summaryMoney(tick), padding.left - 8, y + 4);
   });
 
   ctx.textAlign = "center";
@@ -663,6 +724,8 @@ function renderChart() {
     const point = pointFor(item, index);
     ctx.fillText(item.label.slice(0, 6), point.x, height - 16);
   });
+
+  drawActivePoint(ctx, activeTrendPoint, activeChart === "roi" ? "#166c55" : "#d99d28");
 }
 
 function renderStockFilters() {
@@ -724,6 +787,9 @@ function updateStockDropdownLabel() {
 }
 
 function renderComparisonChart() {
+  comparisonHitPoints = [];
+  const selectedKey = activeComparisonPoint ? activeComparisonPoint.key : "";
+  if (!selectedKey) hideChartTooltip(comparisonTooltip);
   const ratio = window.devicePixelRatio || 1;
   const width = comparisonCanvas.clientWidth || 680;
   const height = comparisonCanvas.clientHeight || 360;
@@ -785,6 +851,17 @@ function renderComparisonChart() {
 
     item.values.forEach((point, index) => {
       const position = pointFor(point, index);
+      const hitPoint = {
+        ...position,
+        key: `${activeComparisonChart}-${item.label}-${index}`,
+        label: item.label,
+        pointLabel: point.label,
+        value: point.value,
+        mode: activeComparisonChart,
+        color,
+      };
+      comparisonHitPoints.push(hitPoint);
+      if (hitPoint.key === selectedKey) activeComparisonPoint = hitPoint;
       comparisonCtx.fillStyle = "#ffffff";
       comparisonCtx.strokeStyle = color;
       comparisonCtx.lineWidth = 3;
@@ -800,7 +877,7 @@ function renderComparisonChart() {
   comparisonCtx.textAlign = "right";
   [minValue, minValue + spread / 2, maxValue].forEach((tick) => {
     const y = padding.top + plotHeight - ((tick - minValue) / spread) * plotHeight;
-    comparisonCtx.fillText(activeComparisonChart === "roi" ? percent(tick) : money(tick), padding.left - 8, y + 4);
+    comparisonCtx.fillText(activeComparisonChart === "roi" ? summaryPercent(tick) : summaryMoney(tick), padding.left - 8, y + 4);
   });
 
   comparisonCtx.textAlign = "center";
@@ -819,6 +896,8 @@ function renderComparisonChart() {
     comparisonCtx.fillText(item.label, legendX + 14, 19);
     legendX += Math.min(90, 26 + item.label.length * 8);
   });
+
+  drawActivePoint(comparisonCtx, activeComparisonPoint, activeComparisonPoint ? activeComparisonPoint.color : "#166c55");
 }
 
 function eventsByDate() {
@@ -1012,7 +1091,8 @@ cashForm.addEventListener("submit", (event) => {
   event.preventDefault();
   totalCash = toNumeric(cashInput.value);
   saveCash();
-  recordCashEvent("Set");
+  cashEvents = cashEvents.filter((cashEvent) => cashEvent.label !== "Set");
+  saveCashEvents();
   renderSummary();
   renderChart();
 });
@@ -1347,6 +1427,42 @@ Object.values(fields).forEach((field) => {
 window.addEventListener("resize", () => {
   renderChart();
   renderComparisonChart();
+});
+
+canvas.addEventListener("click", (event) => {
+  const point = nearestHitPoint(trendHitPoints, event, canvas);
+  if (!point) {
+    activeTrendPoint = null;
+    hideChartTooltip(trendTooltip);
+    renderChart();
+    return;
+  }
+  activeTrendPoint = point;
+  renderChart();
+  showChartTooltip(
+    trendTooltip,
+    canvas,
+    point,
+    `<strong>${escapeHtml(point.label)}</strong><span>${point.mode === "roi" ? "ROI" : "Cash"} ${chartValueLabel(point.mode, point.value)}</span>`,
+  );
+});
+
+comparisonCanvas.addEventListener("click", (event) => {
+  const point = nearestHitPoint(comparisonHitPoints, event, comparisonCanvas);
+  if (!point) {
+    activeComparisonPoint = null;
+    hideChartTooltip(comparisonTooltip);
+    renderComparisonChart();
+    return;
+  }
+  activeComparisonPoint = point;
+  renderComparisonChart();
+  showChartTooltip(
+    comparisonTooltip,
+    comparisonCanvas,
+    point,
+    `<strong>${escapeHtml(point.label)}</strong><span>${point.mode === "roi" ? "ROI" : "Cash"} ${chartValueLabel(point.mode, point.value)}</span>`,
+  );
 });
 
 document.addEventListener("input", (event) => {

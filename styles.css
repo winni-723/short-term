@@ -410,6 +410,11 @@ select:focus {
   margin-bottom: 12px;
 }
 
+#trendsChartView,
+#comparisonChartView {
+  position: relative;
+}
+
 .chart-panel [hidden] {
   display: none;
 }
@@ -420,6 +425,41 @@ select:focus {
   display: block;
   border-radius: 8px;
   background: #fbfcfa;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 4;
+  transform: translate(0, -50%);
+  min-width: 126px;
+  max-width: 210px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+.chart-tooltip.left {
+  transform: translate(-100%, -50%);
+}
+
+.chart-tooltip strong,
+.chart-tooltip span {
+  display: block;
+}
+
+.chart-tooltip strong {
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.chart-tooltip span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
 }
 
 .stock-filters {
