@@ -27,7 +27,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -80,7 +81,7 @@ h2 {
 }
 
 .cash-card {
-  min-width: 148px;
+  min-width: min(100%, 320px);
   padding: 14px;
   border-radius: 8px;
 }
@@ -99,6 +100,23 @@ h2 {
   margin-top: 6px;
   font-size: 1.28rem;
   white-space: nowrap;
+}
+
+.cash-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cash-form input {
+  min-height: 38px;
+}
+
+.cash-form .primary-button,
+.cash-form .secondary-button {
+  min-height: 38px;
+  padding: 0 12px;
 }
 
 .summary-grid {
@@ -160,7 +178,19 @@ input {
   outline: none;
 }
 
-input:focus {
+select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #fbfcfa;
+  color: var(--ink);
+  outline: none;
+}
+
+input:focus,
+select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(22, 108, 85, 0.12);
 }
@@ -187,8 +217,10 @@ input:focus {
 }
 
 .primary-button,
+.secondary-button,
 .danger-button,
 .icon-button,
+.select-trade,
 .segmented button {
   min-height: 42px;
   border-radius: 8px;
@@ -201,9 +233,16 @@ input:focus {
   color: #fff;
 }
 
+.secondary-button {
+  background: #e3eee8;
+  color: var(--accent-strong);
+}
+
 .primary-button:active,
+.secondary-button:active,
 .segmented button.active {
   background: var(--accent-strong);
+  color: #fff;
 }
 
 .icon-button {
@@ -217,6 +256,15 @@ input:focus {
   padding: 0 12px;
   background: #f4e4df;
   color: var(--loss);
+}
+
+.select-trade {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 0 12px;
+  background: #e3eee8;
+  color: var(--accent-strong);
 }
 
 .segmented {
@@ -238,12 +286,122 @@ input:focus {
   color: #fff;
 }
 
+.chart-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.chart-panel [hidden] {
+  display: none;
+}
+
 .chart-panel canvas {
   width: 100%;
   aspect-ratio: 17 / 9;
   display: block;
   border-radius: 8px;
   background: #fbfcfa;
+}
+
+.stock-filters {
+  margin-bottom: 12px;
+}
+
+.stock-dropdown {
+  position: relative;
+  width: min(100%, 360px);
+}
+
+.stock-dropdown-button {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: #fbfcfa;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.stock-dropdown-button span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.stock-dropdown-button strong {
+  font-size: 0.86rem;
+}
+
+.stock-dropdown-button::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--accent-strong);
+  border-bottom: 2px solid var(--accent-strong);
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.stock-dropdown-button[aria-expanded="true"]::after {
+  transform: rotate(225deg) translateY(-2px);
+}
+
+.stock-dropdown-menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.stock-dropdown-actions {
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.stock-dropdown-actions .secondary-button {
+  width: 100%;
+  min-height: 36px;
+}
+
+.stock-check {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: var(--ink);
+}
+
+.stock-check:hover {
+  background: #f3f7f2;
+}
+
+.stock-check input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--accent);
+}
+
+.filter-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .empty-state {
@@ -296,6 +454,29 @@ input:focus {
   font-weight: 900;
 }
 
+.result-stack {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+}
+
+.open-trade {
+  align-items: start;
+}
+
+.open-badge {
+  background: #fff1d6;
+  color: #8a5a00;
+}
+
+.processing-panel .trade-form {
+  margin-bottom: 12px;
+}
+
+.is-disabled {
+  opacity: 0.62;
+}
+
 .profit {
   color: var(--profit);
 }
@@ -313,6 +494,83 @@ input:focus {
   color: var(--muted);
 }
 
+.calendar-panel .panel-heading {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  text-align: center;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-weekdays {
+  gap: 6px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.calendar-grid {
+  gap: 6px;
+}
+
+.calendar-day {
+  min-height: 82px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px;
+  background: #fbfcfa;
+}
+
+.calendar-day.blank {
+  border-color: transparent;
+  background: transparent;
+}
+
+.calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(22, 108, 85, 0.12);
+}
+
+.day-number {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.calendar-events {
+  display: grid;
+  gap: 4px;
+}
+
+.calendar-event {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 3px 5px;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event.buy {
+  background: var(--accent);
+}
+
+.calendar-event.sell {
+  background: var(--gold);
+  color: #31220a;
+}
+
 @media (max-width: 640px) {
   .topbar {
     grid-template-columns: 1fr;
@@ -320,6 +578,14 @@ input:focus {
 
   .cash-card {
     width: 100%;
+  }
+
+  .cash-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cash-form input {
+    grid-column: 1 / -1;
   }
 
   .summary-grid {
@@ -330,11 +596,48 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
+  .chart-panel .panel-heading,
+  .chart-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chart-panel .segmented {
+    width: 100%;
+  }
+
+  .stock-dropdown {
+    width: 100%;
+  }
+
   .trade-row {
     grid-template-columns: 1fr;
   }
 
   .trade-result {
     text-align: left;
+  }
+
+  .result-stack {
+    justify-items: start;
+  }
+
+  .calendar-grid,
+  .calendar-weekdays {
+    gap: 4px;
+  }
+
+  .calendar-day {
+    min-height: 64px;
+    padding: 5px;
+  }
+
+  .calendar-weekdays span {
+    font-size: 0.64rem;
+  }
+
+  .calendar-event {
+    padding: 2px 4px;
+    font-size: 0.58rem;
   }
 }

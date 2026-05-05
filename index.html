@@ -18,6 +18,11 @@
         <div class="cash-card">
           <span>Total Cash</span>
           <strong id="totalCash">$0.00</strong>
+          <form id="cashForm" class="cash-form">
+            <input id="cashInput" name="cashInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount" />
+            <button class="primary-button" type="submit">Enter Amount</button>
+            <button id="addCashButton" class="secondary-button" type="button">Add</button>
+          </form>
         </div>
       </section>
 
@@ -38,7 +43,7 @@
 
       <section class="panel">
         <div class="panel-heading">
-          <h2>Add Trade</h2>
+          <h2>Add Buy-in Record</h2>
           <button id="resetButton" class="icon-button" type="button" title="Reset form" aria-label="Reset form">R</button>
         </div>
 
@@ -46,10 +51,6 @@
           <label>
             Buy-in Date
             <input id="buyDate" name="buyDate" type="date" required />
-          </label>
-          <label>
-            Sell-out Date
-            <input id="sellDate" name="sellDate" type="date" required />
           </label>
           <label class="wide">
             Stock Name
@@ -60,10 +61,6 @@
             <input id="buyPrice" name="buyPrice" type="number" min="0" step="0.0001" inputmode="decimal" required />
           </label>
           <label>
-            Sell-out Price
-            <input id="sellPrice" name="sellPrice" type="number" min="0" step="0.0001" inputmode="decimal" required />
-          </label>
-          <label>
             Shares
             <input id="shares" name="shares" type="number" min="0" step="0.000001" inputmode="decimal" required />
           </label>
@@ -71,36 +68,93 @@
             Cash Invested if Shares = 0
             <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.01" inputmode="decimal" />
           </label>
-          <label>
-            Current Total Cash
-            <input id="cashBalance" name="cashBalance" type="number" min="0" step="0.01" inputmode="decimal" required />
-          </label>
           <div class="preview wide" aria-live="polite">
             <span>Calculated Shares</span>
             <strong id="sharePreview">0</strong>
           </div>
-          <button class="primary-button wide" type="submit">Save Trade and Calculate</button>
+          <button class="primary-button wide" type="submit">Save to Processing Transactions</button>
         </form>
+      </section>
+
+      <section class="panel processing-panel">
+        <div class="panel-heading">
+          <h2>Processing Transactions</h2>
+        </div>
+        <form id="closeTradeForm" class="trade-form">
+          <label class="wide">
+            Select Processing Record
+            <select id="processingSelect" name="processingSelect" required></select>
+          </label>
+          <label>
+            Sell-out Date
+            <input id="closeSellDate" name="closeSellDate" type="date" required />
+          </label>
+          <label>
+            Sell-out Price
+            <input id="closeSellPrice" name="closeSellPrice" type="number" min="0" step="0.0001" inputmode="decimal" required />
+          </label>
+          <button id="calculateButton" class="primary-button" type="submit">Calculate and Complete</button>
+        </form>
+        <div id="processingEmptyState" class="empty-state">No processing transactions</div>
+        <div id="processingList" class="trade-list"></div>
       </section>
 
       <section class="panel chart-panel">
         <div class="panel-heading">
-          <h2>Trends</h2>
-          <div class="segmented" role="group" aria-label="Chart mode">
-            <button class="active" type="button" data-chart="roi">ROI</button>
-            <button type="button" data-chart="cash">Cash</button>
+          <h2>Charts</h2>
+          <div class="segmented" role="group" aria-label="Chart view">
+            <button class="active" type="button" data-chart-view="trends">Trends</button>
+            <button type="button" data-chart-view="comparison">Comparison</button>
           </div>
         </div>
-        <canvas id="trendChart" width="680" height="360" aria-label="ROI and cash trend line chart"></canvas>
+
+        <div id="trendsChartView">
+          <div class="chart-controls">
+            <div class="segmented" role="group" aria-label="Trend chart mode">
+              <button class="active" type="button" data-chart="roi">ROI</button>
+              <button type="button" data-chart="cash">Cash</button>
+            </div>
+          </div>
+          <canvas id="trendChart" width="680" height="360" aria-label="ROI and cash trend line chart"></canvas>
+        </div>
+
+        <div id="comparisonChartView" hidden>
+          <div class="chart-controls">
+            <div class="segmented" role="group" aria-label="Comparison chart mode">
+              <button class="active" type="button" data-comparison-chart="roi">ROI</button>
+              <button type="button" data-comparison-chart="cash">Cash</button>
+            </div>
+          </div>
+          <div id="stockFilters" class="stock-filters" aria-label="Stock filters"></div>
+          <canvas id="comparisonChart" width="680" height="360" aria-label="Stock ROI and cash comparison line chart"></canvas>
+        </div>
+      </section>
+
+      <section class="panel calendar-panel">
+        <div class="panel-heading">
+          <button id="prevMonthButton" class="icon-button" type="button" title="Previous month" aria-label="Previous month">&lt;</button>
+          <h2 id="calendarTitle">Calendar</h2>
+          <button id="nextMonthButton" class="icon-button" type="button" title="Next month" aria-label="Next month">&gt;</button>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>Sun</span>
+          <span>Mon</span>
+          <span>Tue</span>
+          <span>Wed</span>
+          <span>Thu</span>
+          <span>Fri</span>
+          <span>Sat</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid" aria-label="Buy-in and sell-out calendar"></div>
       </section>
 
       <section class="panel history-panel">
         <div class="panel-heading">
-          <h2>Trade History</h2>
+          <h2>Completed Trade History</h2>
           <button id="clearAllButton" class="danger-button" type="button">Clear All</button>
         </div>
-        <div id="emptyState" class="empty-state">No trades yet</div>
-        <div id="tradeList" class="trade-list"></div>
+        <div id="completedEmptyState" class="empty-state">No completed trades yet</div>
+        <div id="completedList" class="trade-list"></div>
       </section>
     </main>
 
