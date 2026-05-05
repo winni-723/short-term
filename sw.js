@@ -1,4 +1,4 @@
-const CACHE_NAME = "short-term-investment-v12";
+const CACHE_NAME = "short-term-investment-v19";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {

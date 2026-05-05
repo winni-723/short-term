@@ -9,24 +9,46 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="topbar" aria-label="Investment overview">
+    <div class="app-layout">
+      <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
+      <aside class="sidebar" aria-label="App navigation">
+        <div class="sidebar-brand">
+          <span>Short-term</span>
+          <strong>Investments</strong>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="active" type="button" data-page-target="home">Home</button>
+          <button type="button" data-page-target="add">Add Buy-in</button>
+          <button type="button" data-page-target="transactions">Transactions</button>
+        </nav>
+      </aside>
+
+      <main class="app-shell">
+      <header class="app-header">
+        <button id="menuButton" class="menu-button" type="button" aria-label="Open toolbox" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div>
           <p class="eyebrow">Short-term Portfolio</p>
-          <h1>Investment Tracker</h1>
+          <h1 id="pageTitle">Investment Tracker</h1>
         </div>
+      </header>
+
+      <section class="topbar page-section" data-page="home" aria-label="Investment overview">
         <div class="cash-card">
           <span>Total Cash</span>
           <strong id="totalCash">$0.00</strong>
           <form id="cashForm" class="cash-form">
-            <input id="cashInput" name="cashInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount" />
+            <input id="cashInput" name="cashInput" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="Enter amount" />
             <button class="primary-button" type="submit">Enter Amount</button>
             <button id="addCashButton" class="secondary-button" type="button">Add</button>
           </form>
         </div>
       </section>
 
-      <section class="summary-grid" aria-label="Performance summary">
+      <section class="summary-grid page-section" data-page="home" aria-label="Performance summary">
         <article>
           <span>Total Realized P/L</span>
           <strong id="totalProfit">$0.00</strong>
@@ -41,7 +63,7 @@
         </article>
       </section>
 
-      <section class="panel">
+      <section class="panel page-section" data-page="add" hidden>
         <div class="panel-heading">
           <h2>Add Buy-in Record</h2>
           <button id="resetButton" class="icon-button" type="button" title="Reset form" aria-label="Reset form">R</button>
@@ -62,11 +84,11 @@
           </label>
           <label>
             Shares
-            <input id="shares" name="shares" type="number" min="0" step="0.000001" inputmode="decimal" required />
+            <input id="shares" name="shares" type="number" min="0" step="0.0001" inputmode="decimal" required />
           </label>
           <label id="cashInvestedField">
             Cash Invested if Shares = 0
-            <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.01" inputmode="decimal" />
+            <input id="cashInvested" name="cashInvested" type="number" min="0" step="0.0001" inputmode="decimal" />
           </label>
           <div class="preview wide" aria-live="polite">
             <span>Calculated Shares</span>
@@ -76,7 +98,7 @@
         </form>
       </section>
 
-      <section class="panel processing-panel">
+      <section class="panel processing-panel page-section" data-page="transactions" hidden>
         <div class="panel-heading">
           <h2>Processing Transactions</h2>
         </div>
@@ -99,7 +121,7 @@
         <div id="processingList" class="trade-list"></div>
       </section>
 
-      <section class="panel chart-panel">
+      <section class="panel chart-panel page-section" data-page="home">
         <div class="panel-heading">
           <h2>Charts</h2>
           <div class="segmented" role="group" aria-label="Chart view">
@@ -130,7 +152,7 @@
         </div>
       </section>
 
-      <section class="panel calendar-panel">
+      <section class="panel calendar-panel page-section" data-page="home">
         <div class="panel-heading">
           <button id="prevMonthButton" class="icon-button" type="button" title="Previous month" aria-label="Previous month">&lt;</button>
           <h2 id="calendarTitle">Calendar</h2>
@@ -148,15 +170,46 @@
         <div id="calendarGrid" class="calendar-grid" aria-label="Buy-in and sell-out calendar"></div>
       </section>
 
-      <section class="panel history-panel">
+      <section class="panel history-panel page-section" data-page="transactions" hidden>
         <div class="panel-heading">
           <h2>Completed Trade History</h2>
           <button id="clearAllButton" class="danger-button" type="button">Clear All</button>
         </div>
+        <div class="history-tools">
+          <div class="segmented" role="group" aria-label="History filter mode">
+            <button class="active" type="button" data-history-filter="date">Date</button>
+            <button type="button" data-history-filter="stock">Stock</button>
+          </div>
+          <div id="historyDateFilters" class="history-filter-fields">
+            <label>
+              From
+              <input id="historyDateFrom" type="date" />
+            </label>
+            <label>
+              To
+              <input id="historyDateTo" type="date" />
+            </label>
+          </div>
+          <div id="historyStockFilters" class="history-filter-fields" hidden>
+            <label>
+              Stock Name
+              <select id="historyStockSelect">
+                <option value="">All stocks</option>
+              </select>
+            </label>
+          </div>
+          <button id="resetHistoryFilter" class="secondary-button" type="button">Reset Filter</button>
+        </div>
         <div id="completedEmptyState" class="empty-state">No completed trades yet</div>
         <div id="completedList" class="trade-list"></div>
+        <div class="pagination">
+          <button id="prevHistoryPage" class="secondary-button" type="button">Prev</button>
+          <span id="historyPageInfo">Page 1 of 1</span>
+          <button id="nextHistoryPage" class="secondary-button" type="button">Next</button>
+        </div>
       </section>
     </main>
+    </div>
 
     <script src="app.js"></script>
   </body>

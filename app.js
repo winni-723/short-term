@@ -5,6 +5,11 @@ const CASH_EVENTS_KEY = "shortTermInvestmentCashEvents";
 const cashForm = document.querySelector("#cashForm");
 const cashInput = document.querySelector("#cashInput");
 const addCashButton = document.querySelector("#addCashButton");
+const menuButton = document.querySelector("#menuButton");
+const sidebar = document.querySelector(".sidebar");
+const sidebarBackdrop = document.querySelector("#sidebarBackdrop");
+const pageButtons = document.querySelectorAll("[data-page-target]");
+const pageSections = document.querySelectorAll("[data-page]");
 const form = document.querySelector("#tradeForm");
 const closeTradeForm = document.querySelector("#closeTradeForm");
 const resetButton = document.querySelector("#resetButton");
@@ -24,6 +29,16 @@ const processingList = document.querySelector("#processingList");
 const processingEmptyState = document.querySelector("#processingEmptyState");
 const completedList = document.querySelector("#completedList");
 const completedEmptyState = document.querySelector("#completedEmptyState");
+const historyFilterButtons = document.querySelectorAll("[data-history-filter]");
+const historyDateFilters = document.querySelector("#historyDateFilters");
+const historyStockFilters = document.querySelector("#historyStockFilters");
+const historyDateFrom = document.querySelector("#historyDateFrom");
+const historyDateTo = document.querySelector("#historyDateTo");
+const historyStockSelect = document.querySelector("#historyStockSelect");
+const resetHistoryFilter = document.querySelector("#resetHistoryFilter");
+const prevHistoryPage = document.querySelector("#prevHistoryPage");
+const nextHistoryPage = document.querySelector("#nextHistoryPage");
+const historyPageInfo = document.querySelector("#historyPageInfo");
 const calendarGrid = document.querySelector("#calendarGrid");
 const calendarTitle = document.querySelector("#calendarTitle");
 const prevMonthButton = document.querySelector("#prevMonthButton");
@@ -32,13 +47,19 @@ const nextMonthButton = document.querySelector("#nextMonthButton");
 let trades = loadTrades().map(normalizeTrade);
 let totalCash = loadCash(trades);
 let cashEvents = loadCashEvents();
+let activePage = "home";
 let activeChartView = "trends";
 let activeChart = "roi";
 let activeComparisonChart = "roi";
 let selectedStocks = new Set();
 let stockFiltersInitialized = false;
+let historyFilterMode = "date";
+let historyPage = 1;
+const HISTORY_PAGE_SIZE = 10;
+let editingProcessingId = "";
 let calendarDate = new Date();
 calendarDate.setDate(1);
+const DECIMAL_PLACES = 4;
 
 const fields = {
   buyDate: document.querySelector("#buyDate"),
@@ -103,18 +124,33 @@ function money(value) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: DECIMAL_PLACES,
+    maximumFractionDigits: DECIMAL_PLACES,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function summaryMoney(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
 }
 
 function percent(value) {
+  return `${(Number.isFinite(value) ? value : 0).toFixed(DECIMAL_PLACES)}%`;
+}
+
+function summaryPercent(value) {
   return `${(Number.isFinite(value) ? value : 0).toFixed(2)}%`;
 }
 
 function number(value) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(
-    Number.isFinite(value) ? value : 0,
-  );
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: DECIMAL_PLACES,
+    maximumFractionDigits: DECIMAL_PLACES,
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 function escapeHtml(value) {
@@ -133,6 +169,24 @@ function escapeHtml(value) {
 function toNumeric(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function roundDecimal(value) {
+  const factor = 10 ** DECIMAL_PLACES;
+  return Math.round((Number.isFinite(value) ? value : 0) * factor) / factor;
+}
+
+function decimalInputValue(value) {
+  return Number.isFinite(value) ? value.toFixed(DECIMAL_PLACES) : "";
+}
+
+function limitDecimalInput(input) {
+  const value = input.value;
+  const dotIndex = value.indexOf(".");
+  if (dotIndex === -1) return;
+  const decimals = value.slice(dotIndex + 1);
+  if (decimals.length <= DECIMAL_PLACES) return;
+  input.value = `${value.slice(0, dotIndex)}.${decimals.slice(0, DECIMAL_PLACES)}`;
 }
 
 function dateKey(date) {
@@ -185,7 +239,7 @@ function calculateShares() {
   const cashInvested = toNumeric(fields.cashInvested.value);
 
   if (shares > 0) return shares;
-  if (buyPrice > 0 && cashInvested > 0) return cashInvested / buyPrice;
+  if (buyPrice > 0 && cashInvested > 0) return roundDecimal(cashInvested / buyPrice);
   return 0;
 }
 
@@ -248,22 +302,46 @@ function stockNames() {
   return [...new Set(completedTrades().map((trade) => trade.stockName))].sort();
 }
 
+function filteredCompletedTrades() {
+  return [...completedTrades()].reverse().filter((trade) => {
+    if (historyFilterMode === "stock") {
+      return !historyStockSelect.value || trade.stockName === historyStockSelect.value;
+    }
+
+    const from = historyDateFrom.value;
+    const to = historyDateTo.value;
+    if (from && trade.sellDate < from) return false;
+    if (to && trade.sellDate > to) return false;
+    return true;
+  });
+}
+
 function renderSummary() {
   const closed = completedTrades();
   const totalProfit = closed.reduce((sum, trade) => sum + trade.profit, 0);
   const averageRoi = closed.length ? closed.reduce((sum, trade) => sum + trade.roi, 0) / closed.length : 0;
 
-  document.querySelector("#totalCash").textContent = money(totalCash);
-  cashInput.value = totalCash ? totalCash.toFixed(2) : "";
-  document.querySelector("#totalProfit").textContent = money(totalProfit);
+  document.querySelector("#totalCash").textContent = summaryMoney(totalCash);
+  cashInput.value = totalCash ? decimalInputValue(totalCash) : "";
+  document.querySelector("#totalProfit").textContent = summaryMoney(totalProfit);
   document.querySelector("#totalProfit").className = totalProfit >= 0 ? "profit" : "loss";
-  document.querySelector("#averageRoi").textContent = percent(averageRoi);
+  document.querySelector("#averageRoi").textContent = summaryPercent(averageRoi);
   document.querySelector("#averageRoi").className = averageRoi >= 0 ? "profit" : "loss";
   document.querySelector("#tradeCount").textContent = closed.length;
 }
 
 function tradeOptionLabel(trade) {
   return `${trade.stockName} - Buy ${trade.buyDate} - ${number(trade.shares)} shares @ ${money(trade.buyPrice)}`;
+}
+
+function sharesFromValues(sharesValue, buyPriceValue, cashInvestedValue) {
+  const shares = toNumeric(sharesValue);
+  const buyPrice = toNumeric(buyPriceValue);
+  const cashInvested = toNumeric(cashInvestedValue);
+
+  if (shares > 0) return roundDecimal(shares);
+  if (buyPrice > 0 && cashInvested > 0) return roundDecimal(cashInvested / buyPrice);
+  return 0;
 }
 
 function renderProcessingTransactions() {
@@ -279,6 +357,7 @@ function renderProcessingTransactions() {
   });
 
   if (!openTrades.length) {
+    editingProcessingId = "";
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "No processing records available";
@@ -298,6 +377,7 @@ function renderProcessingTransactions() {
   updateCloseFormForSelection();
 
   [...openTrades].reverse().forEach((trade) => {
+    const isEditing = editingProcessingId === trade.id;
     const row = document.createElement("article");
     row.className = "trade-row open-trade";
     row.innerHTML = `
@@ -310,9 +390,42 @@ function renderProcessingTransactions() {
           Buy ${trade.buyDate}<br>
           Buy ${money(trade.buyPrice)} / ${number(trade.shares)} shares / Invested ${money(trade.invested)}
         </div>
+        ${
+          isEditing
+            ? `
+              <form class="processing-edit-form" data-edit-form="${trade.id}">
+                <label>
+                  Buy-in Date
+                  <input name="buyDate" type="date" value="${trade.buyDate}" required />
+                </label>
+                <label>
+                  Stock Name
+                  <input name="stockName" type="text" value="${escapeHtml(trade.stockName)}" autocomplete="off" required />
+                </label>
+                <label>
+                  Buy-in Price
+                  <input name="buyPrice" type="number" min="0" step="0.0001" inputmode="decimal" value="${decimalInputValue(trade.buyPrice)}" required />
+                </label>
+                <label>
+                  Shares
+                  <input name="shares" type="number" min="0" step="0.0001" inputmode="decimal" value="${decimalInputValue(trade.shares)}" required />
+                </label>
+                <label>
+                  Cash Invested if Shares = 0
+                  <input name="cashInvested" type="number" min="0" step="0.0001" inputmode="decimal" value="${trade.cashInvested ? decimalInputValue(trade.cashInvested) : ""}" />
+                </label>
+                <div class="edit-actions">
+                  <button class="primary-button" type="submit">Save Edit</button>
+                  <button class="secondary-button" type="button" data-cancel-edit-id="${trade.id}">Cancel</button>
+                </div>
+              </form>
+            `
+            : ""
+        }
       </div>
       <div class="trade-result">
         ${money(trade.invested)}
+        <button class="secondary-button edit-trade" type="button" data-edit-id="${trade.id}">${isEditing ? "Editing" : "Edit"}</button>
         <button class="select-trade" type="button" data-select-id="${trade.id}">Select</button>
         <button class="delete-trade" type="button" title="Delete record" aria-label="Delete record" data-delete-id="${trade.id}">x</button>
       </div>
@@ -322,11 +435,20 @@ function renderProcessingTransactions() {
 }
 
 function renderCompletedTrades() {
-  const closed = completedTrades();
+  renderHistoryFilters();
+  const closed = filteredCompletedTrades();
+  const totalPages = Math.max(1, Math.ceil(closed.length / HISTORY_PAGE_SIZE));
+  historyPage = Math.min(historyPage, totalPages);
+  const pageStart = (historyPage - 1) * HISTORY_PAGE_SIZE;
+  const pageTrades = closed.slice(pageStart, pageStart + HISTORY_PAGE_SIZE);
+
   completedList.innerHTML = "";
   completedEmptyState.hidden = closed.length > 0;
+  prevHistoryPage.disabled = historyPage <= 1;
+  nextHistoryPage.disabled = historyPage >= totalPages;
+  historyPageInfo.textContent = `Page ${historyPage} of ${totalPages}`;
 
-  [...closed].reverse().forEach((trade) => {
+  pageTrades.forEach((trade) => {
     const row = document.createElement("article");
     row.className = "trade-row";
     row.innerHTML = `
@@ -348,6 +470,24 @@ function renderCompletedTrades() {
     `;
     completedList.append(row);
   });
+}
+
+function renderHistoryFilters() {
+  historyFilterButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.historyFilter === historyFilterMode);
+  });
+  historyDateFilters.hidden = historyFilterMode !== "date";
+  historyStockFilters.hidden = historyFilterMode !== "stock";
+
+  const currentValue = historyStockSelect.value;
+  historyStockSelect.innerHTML = `<option value="">All stocks</option>`;
+  stockNames().forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    historyStockSelect.append(option);
+  });
+  historyStockSelect.value = [...historyStockSelect.options].some((option) => option.value === currentValue) ? currentValue : "";
 }
 
 function updateCloseFormForSelection() {
@@ -702,6 +842,7 @@ function renderCalendar() {
 }
 
 function render() {
+  renderPage();
   renderSummary();
   renderProcessingTransactions();
   renderCompletedTrades();
@@ -710,6 +851,21 @@ function render() {
   renderStockFilters();
   renderComparisonChart();
   renderCalendar();
+}
+
+function renderPage() {
+  pageSections.forEach((section) => {
+    section.hidden = section.dataset.page !== activePage;
+  });
+  pageButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.pageTarget === activePage);
+  });
+}
+
+function setToolboxOpen(isOpen) {
+  sidebar.classList.toggle("open", isOpen);
+  sidebarBackdrop.hidden = !isOpen;
+  menuButton.setAttribute("aria-expanded", String(isOpen));
 }
 
 function renderChartView() {
@@ -771,6 +927,20 @@ clearAllButton.addEventListener("click", () => {
 });
 
 document.addEventListener("click", (event) => {
+  const editButton = event.target.closest("[data-edit-id]");
+  if (editButton) {
+    editingProcessingId = editButton.dataset.editId;
+    renderProcessingTransactions();
+    return;
+  }
+
+  const cancelEditButton = event.target.closest("[data-cancel-edit-id]");
+  if (cancelEditButton) {
+    editingProcessingId = "";
+    renderProcessingTransactions();
+    return;
+  }
+
   const selectButton = event.target.closest("[data-select-id]");
   if (selectButton) {
     processingSelect.value = selectButton.dataset.selectId;
@@ -822,7 +992,98 @@ closeTradeForm.addEventListener("submit", (event) => {
   render();
 });
 
+processingList.addEventListener("submit", (event) => {
+  const editForm = event.target.closest("[data-edit-form]");
+  if (!editForm) return;
+  event.preventDefault();
+
+  const originalTrade = trades.find((trade) => trade.id === editForm.dataset.editForm);
+  if (!originalTrade) return;
+
+  const formData = new FormData(editForm);
+  const editedTrade = calculateResult({
+    ...originalTrade,
+    buyDate: formData.get("buyDate"),
+    stockName: String(formData.get("stockName") || "").trim().toUpperCase(),
+    buyPrice: toNumeric(formData.get("buyPrice")),
+    shares: sharesFromValues(formData.get("shares"), formData.get("buyPrice"), formData.get("cashInvested")),
+    cashInvested: toNumeric(formData.get("cashInvested")),
+    sellDate: "",
+    sellPrice: NaN,
+  });
+  const error = validateOpenTrade(editedTrade);
+  const availableCash = totalCash + originalTrade.invested;
+
+  if (error) {
+    alert(error);
+    return;
+  }
+  if (availableCash < editedTrade.invested) {
+    alert("Total cash is not enough for this edited buy-in record.");
+    return;
+  }
+
+  totalCash = availableCash - editedTrade.invested;
+  editedTrade.cashBalance = totalCash;
+  trades = trades.map((trade) => (trade.id === editedTrade.id ? editedTrade : trade));
+  editingProcessingId = "";
+  saveTrades();
+  saveCash();
+  render();
+});
+
 processingSelect.addEventListener("change", updateCloseFormForSelection);
+
+historyFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    historyFilterMode = button.dataset.historyFilter;
+    historyPage = 1;
+    renderCompletedTrades();
+  });
+});
+
+[historyDateFrom, historyDateTo, historyStockSelect].forEach((control) => {
+  control.addEventListener("input", () => {
+    historyPage = 1;
+    renderCompletedTrades();
+  });
+});
+
+resetHistoryFilter.addEventListener("click", () => {
+  historyDateFrom.value = "";
+  historyDateTo.value = "";
+  historyStockSelect.value = "";
+  historyPage = 1;
+  renderCompletedTrades();
+});
+
+prevHistoryPage.addEventListener("click", () => {
+  historyPage = Math.max(1, historyPage - 1);
+  renderCompletedTrades();
+});
+
+nextHistoryPage.addEventListener("click", () => {
+  historyPage += 1;
+  renderCompletedTrades();
+});
+
+menuButton.addEventListener("click", () => {
+  setToolboxOpen(!sidebar.classList.contains("open"));
+});
+
+sidebarBackdrop.addEventListener("click", () => {
+  setToolboxOpen(false);
+});
+
+pageButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activePage = button.dataset.pageTarget;
+    renderPage();
+    renderChart();
+    renderComparisonChart();
+    setToolboxOpen(false);
+  });
+});
 
 chartViewButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -886,6 +1147,10 @@ document.addEventListener("click", (event) => {
   button.setAttribute("aria-expanded", "false");
 });
 
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setToolboxOpen(false);
+});
+
 prevMonthButton.addEventListener("click", () => {
   calendarDate.setMonth(calendarDate.getMonth() - 1);
   renderCalendar();
@@ -906,6 +1171,12 @@ Object.values(fields).forEach((field) => {
 window.addEventListener("resize", () => {
   renderChart();
   renderComparisonChart();
+});
+
+document.addEventListener("input", (event) => {
+  const input = event.target.closest("input[type='number']");
+  if (!input) return;
+  limitDecimalInput(input);
 });
 
 if ("serviceWorker" in navigator) {
