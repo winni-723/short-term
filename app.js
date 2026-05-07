@@ -496,8 +496,8 @@ function renderCompletedTrades() {
         </div>
       </div>
       <div class="trade-result result-stack">
-        <span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${percent(trade.roi)}</span>
-        <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${money(Math.abs(trade.profit))}</span>
+        <span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${summaryPercent(trade.roi)}</span>
+        <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${summaryMoney(Math.abs(trade.profit))}</span>
         <div class="trade-tools">
           <button class="tool-menu-button" type="button" aria-label="Open record tools" data-tool-id="${trade.id}">...</button>
           <div class="tool-menu" data-tool-menu="${trade.id}" hidden>
@@ -993,8 +993,8 @@ function renderCalendarDetails(date) {
                     <div class="trade-result result-stack">
                       ${
                         !buyOnly && isClosed
-                          ? `<span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${percent(trade.roi)}</span>
-                             <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${money(Math.abs(trade.profit))}</span>`
+                          ? `<span class="${trade.roi >= 0 ? "profit" : "loss"}">ROI ${summaryPercent(trade.roi)}</span>
+                             <span class="${trade.profit >= 0 ? "profit" : "loss"}">${trade.profit >= 0 ? "Earn" : "Loss"} ${summaryMoney(Math.abs(trade.profit))}</span>`
                           : buyOnly
                             ? `<span>${cashInvestedMoney(trade.invested)}</span>`
                             : `<span class="badge open-badge">Processing</span>`
