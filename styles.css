@@ -413,8 +413,6 @@ select:focus {
 #trendsChartView,
 #comparisonChartView {
   position: relative;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .chart-panel [hidden] {
@@ -423,7 +421,6 @@ select:focus {
 
 .chart-panel canvas {
   width: 100%;
-  min-width: 640px;
   aspect-ratio: 17 / 9;
   display: block;
   border-radius: 8px;
