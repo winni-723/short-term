@@ -26,6 +26,10 @@ const comparisonTooltip = document.querySelector("#comparisonTooltip");
 const stockFilters = document.querySelector("#stockFilters");
 const trendsChartView = document.querySelector("#trendsChartView");
 const comparisonChartView = document.querySelector("#comparisonChartView");
+const trendPagination = document.querySelector("#trendPagination");
+const olderTrendPage = document.querySelector("#olderTrendPage");
+const newerTrendPage = document.querySelector("#newerTrendPage");
+const trendPageInfo = document.querySelector("#trendPageInfo");
 const processingSelect = document.querySelector("#processingSelect");
 const processingList = document.querySelector("#processingList");
 const processingEmptyState = document.querySelector("#processingEmptyState");
@@ -64,6 +68,8 @@ let stockFiltersInitialized = false;
 let historyFilterMode = "date";
 let historyPage = 1;
 const HISTORY_PAGE_SIZE = 10;
+let trendPage = 1;
+const TREND_PAGE_SIZE = 10;
 let editingProcessingId = "";
 let pendingConfirmAction = null;
 let trendHitPoints = [];
@@ -644,7 +650,16 @@ function renderChart() {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, width, height);
 
-  const data = chartData();
+  const allData = chartData();
+  const totalPages = Math.max(1, Math.ceil(allData.length / TREND_PAGE_SIZE));
+  trendPage = Math.min(trendPage, totalPages);
+  const end = allData.length - (trendPage - 1) * TREND_PAGE_SIZE;
+  const start = Math.max(0, end - TREND_PAGE_SIZE);
+  const data = allData.slice(start, end);
+  trendPagination.hidden = allData.length <= TREND_PAGE_SIZE;
+  trendPageInfo.textContent = trendPage === 1 ? `Latest ${data.length}` : `Page ${trendPage} of ${totalPages}`;
+  olderTrendPage.disabled = trendPage >= totalPages;
+  newerTrendPage.disabled = trendPage <= 1;
   const padding = { top: 24, right: 22, bottom: 42, left: 54 };
 
   ctx.fillStyle = "#fbfcfa";
@@ -1329,9 +1344,26 @@ chartViewButtons.forEach((button) => {
 chartButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeChart = button.dataset.chart;
+    trendPage = 1;
+    activeTrendPoint = null;
+    hideChartTooltip(trendTooltip);
     chartButtons.forEach((item) => item.classList.toggle("active", item === button));
     renderChart();
   });
+});
+
+olderTrendPage.addEventListener("click", () => {
+  trendPage += 1;
+  activeTrendPoint = null;
+  hideChartTooltip(trendTooltip);
+  renderChart();
+});
+
+newerTrendPage.addEventListener("click", () => {
+  trendPage = Math.max(1, trendPage - 1);
+  activeTrendPoint = null;
+  hideChartTooltip(trendTooltip);
+  renderChart();
 });
 
 comparisonButtons.forEach((button) => {
